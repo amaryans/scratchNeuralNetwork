@@ -2,7 +2,6 @@ from cgi import FieldStorage
 from queue import Full
 from re import I
 import numpy as np
-np.warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
 import sys
 import math
 
@@ -23,23 +22,24 @@ class Neuron:
         self.lenWeights = len(weights)
     
     # This method returns the activation of the net (NET IS WEIGHT * INPUT PLUS BIAS)
-    def activate(self):
+    def activate(self, net):
         # can update to change the slope if needed, but right now y=x
         if self.activation == "linear":
-            self.output = self.net
+            output = net
         elif self.activation == "logistic":
-            self.output = 1 / (1 + np.exp(-1 * self.net))
-        return self.output
+            output = 1 / (1 + np.exp(-1 * net))
+        return output
 
     # Calculate the output of the neuron. Should save the input and output for back-propagation.  
     # This is where we should calculate the net which will then be use above to calculate the activation 
     def calculate(self, input):
         # calculating a neurons output is as easy as multiplying the input value by the weights and adding the bias
         self.input = input
-        self.net = np.sum(np.multiply(self.input, self.weights[0:self.inputNum])) + self.weights[self.inputNum]
-        return self.net
+        net = np.sum(np.multiply(self.input, self.weights[0:self.inputNum])) + self.weights[self.inputNum]
+        self.output = self.activate(net)
+        return self.output
 
-    # This method returns the derivative of the activation function with respect to the net 
+    # This method returns the derivative of the activation function with respect to the net (do/dn)
     def activationDerivative(self):
         if self.activation == "linear":
             self.deriv = self.output
@@ -50,14 +50,20 @@ class Neuron:
     # This method calculates the partial derivative for each weight and returns the delta*w to be used in the previous layer
     def calcPartialDerivative(self, deltaTimesW):
         # partial derivative for a neuron is the delataTimesW multiplied by the input
-        # this is used in backpropogation to update the weights in order to continue learning
-        self.deltaTimesW = np.multiply(self.input, deltaTimesW)
-        #self.deltaTimesW[0] = deltaTimesW
-        return self.deltaTimesW
+        # this is used in backpropogation to update the weights in order to continue learn
+        print("Neuron wdelta")
+        self.deltaTimesW = np.multiply(deltaTimesW, self.activationDerivative())
+        
+        print(self.deltaTimesW * self.weights[:self.inputNum])
+        
+        self.updateWeight()
+        return self.deltaTimesW * self.weights[:self.inputNum]
 
     # Simply update the weights using the partial derivatives and the leranring weight
     def updateWeight(self):
-        self.weights = self.weights - lr * self.deltaTimesW
+        print("Updated weights")
+        self.weights[:self.inputNum] = self.weights[:self.inputNum] - lr * np.multiply(self.deltaTimesW, self.input)
+        print(self.weights)
 
 
 #A fully connected layer        
@@ -79,6 +85,7 @@ class FullyConnected:
         self.neurons = []
         self.numOfNeurons = numOfNeurons
         self.weights = weights
+        self.inputNum = inputNum
         # building a layer of neurons each with inputNum number of inputs
         for i in range(self.numOfNeurons):
             self.neurons.append(Neuron(activation, inputNum, lr, weights[i]))
@@ -90,14 +97,17 @@ class FullyConnected:
         output = []
         for neuron in self.neurons:
             neuron.calculate(input)
-            neuron.activate()
             output.append(neuron.output)
         return output
             
     #given the next layer's w*delta, should run through the neurons calling calcpartialderivative() for each (with the correct value), sum up its own w*delta, and then update the wieghts (using the updateweight() method). I should return the sum of w*delta.          
     def calcWDeltas(self, wtimesdelta):
+        nextWDeltas = np.zeros(shape=(self.numOfNeurons, self.inputNum))
         for i in range(self.numOfNeurons):
-            print(self.input[i] * self.neurons[i].activationDerivative() * wtimesdelta[i])
+            nextWDeltas[i] = self.neurons[i].calcPartialDerivative(wtimesdelta[i])
+        print("Next wDelta")
+        print(np.sum(nextWDeltas, axis = 0))
+        return np.sum(nextWDeltas, axis = 0)
         
 #An entire neural network        
 class NeuralNetwork:
@@ -139,7 +149,6 @@ class NeuralNetwork:
         
     #Given a predicted output and ground truth output simply return the loss (depending on the loss function)
     def calculateLoss(self,yp,y):
-        print(yp, y)
         if self.lossFunction == "leastSquares":
             self.lossVal = 0.5 * np.sum(np.power((y-yp), 2))
     
@@ -156,7 +165,6 @@ class NeuralNetwork:
         self.calculateLoss(finalLayerOutput, y)
         self.lossDeriv(finalLayerOutput, y)
         nextWDeltas = self.lossDerivative
-        print(nextWDeltas)
         for layer in range(numOfLayers):
             nextWDeltas = self.layers[numOfLayers-layer-1].calcWDeltas(nextWDeltas)
 
@@ -167,7 +175,7 @@ class NeuralNetwork:
 if __name__=="__main__":
     if len(sys.argv) < 2:
         # Starting point
-        lr = 0.1
+        lr = 0.5
         weights = np.array([[[0.15, 0.2, 0.35],[0.25, 0.30, 0.35]],
                             [[0.40, 0.45, 0.6],[0.50, 0.55, 0.6]]])
         numOfLayers = 2
