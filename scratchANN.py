@@ -51,19 +51,12 @@ class Neuron:
     def calcPartialDerivative(self, deltaTimesW):
         # partial derivative for a neuron is the delataTimesW multiplied by the input
         # this is used in backpropogation to update the weights in order to continue learn
-        print("Neuron wdelta")
         self.deltaTimesW = np.multiply(deltaTimesW, self.activationDerivative())
-        
-        print(self.deltaTimesW * self.weights[:self.inputNum])
-        
-        self.updateWeight()
         return self.deltaTimesW * self.weights[:self.inputNum]
 
     # Simply update the weights using the partial derivatives and the leranring weight
     def updateWeight(self):
-        print("Updated weights")
         self.weights[:self.inputNum] = self.weights[:self.inputNum] - lr * np.multiply(self.deltaTimesW, self.input)
-        print(self.weights)
 
 
 #A fully connected layer        
@@ -105,14 +98,12 @@ class FullyConnected:
         nextWDeltas = np.zeros(shape=(self.numOfNeurons, self.inputNum))
         for i in range(self.numOfNeurons):
             nextWDeltas[i] = self.neurons[i].calcPartialDerivative(wtimesdelta[i])
-        print("Next wDelta")
-        print(np.sum(nextWDeltas, axis = 0))
         return np.sum(nextWDeltas, axis = 0)
         
 #An entire neural network        
 class NeuralNetwork:
     #initialize with the number of layers, number of neurons in each layer (vector), input size, activation (for each layer), the loss function, the learning rate and a 3d matrix of weights (or else initialize randomly)
-    def __init__(self,numOfLayers,numOfNeurons, inputSize, activation, lossFunction, lr, weights=[]):
+    def __init__(self,numOfLayers,numOfNeurons, inputSize, activation, lossFunction, lr, weights=[], epochs=1):
         """
         numOfLayers: int
             Number of layers in the Neural Network
@@ -131,6 +122,7 @@ class NeuralNetwork:
         """
         self.layers = []
         self.lossFunction = lossFunction
+        self.epochs = epochs
         for i in range(numOfLayers):
             self.layers.append(FullyConnected(numOfNeurons[i], activation, inputSize, lr, weights[i]))
         pass
@@ -160,13 +152,17 @@ class NeuralNetwork:
     
     #Given a single input and desired output preform one step of backpropagation (including a forward pass, getting the derivative of the loss, and then calling calcwdeltas for layers with the right values         
     def train(self,x,y):
-        output = self.calculate(x)
-        finalLayerOutput = output[-1]
-        self.calculateLoss(finalLayerOutput, y)
-        self.lossDeriv(finalLayerOutput, y)
-        nextWDeltas = self.lossDerivative
-        for layer in range(numOfLayers):
-            nextWDeltas = self.layers[numOfLayers-layer-1].calcWDeltas(nextWDeltas)
+
+        for i in range(self.epochs):
+            output = self.calculate(x)
+            print(output)
+            finalLayerOutput = output[-1]
+            self.calculateLoss(finalLayerOutput, y)
+            self.lossDeriv(finalLayerOutput, y)
+            nextWDeltas = self.lossDerivative
+            for layer in range(numOfLayers):
+                nextWDeltas = self.layers[numOfLayers-layer-1].calcWDeltas(nextWDeltas)
+        
 
     def returnLoss(self):
         return self.lossDerivative
@@ -183,7 +179,7 @@ if __name__=="__main__":
         numOfInputs = 2
         activation = "logistic"
         loss = "leastSquares"
-        nn = NeuralNetwork(numOfLayers, numOfNeurons, numOfInputs, activation, loss, lr, weights)
+        nn = NeuralNetwork(numOfLayers, numOfNeurons, numOfInputs, activation, loss, lr, weights, epochs = 10)
         inputs = np.array([.05, .1])
         y = np.array([0.01,0.99])
         nn.train(inputs, y)
