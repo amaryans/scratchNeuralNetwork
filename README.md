@@ -1,4 +1,4 @@
-# Pbject Oriented Artificial Neural Netwokr
+# Object Oriented Artificial Neural Network
 An very simple object oriented approach to creating an artifical neural network. 
 While not the most efficient way of creating and training neural networks, this is a good way to understand the mathematics behind the "black box" of TensorFlow and other libraries
 
