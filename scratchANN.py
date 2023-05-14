@@ -27,7 +27,7 @@ class Neuron:
         if self.activation == "linear":
             output = net
         elif self.activation == "logistic":
-            output = 1 / (1 + np.exp(-1 * net))
+            output = 1 / (1 + np.exp(-net))
         return output
 
     # Calculate the output of the neuron. Should save the input and output for back-propagation.  
@@ -35,7 +35,9 @@ class Neuron:
     def calculate(self, input):
         # calculating a neurons output is as easy as multiplying the input value by the weights and adding the bias
         self.input = input
-        net = np.sum(np.multiply(self.input, self.weights[0:self.inputNum])) + self.weights[self.inputNum]
+        if len(self.input) == self.inputNum:
+            self.input = np.append(self.input, 1)
+        net = np.sum(np.multiply(self.input, self.weights))
         self.output = self.activate(net)
         return self.output
 
@@ -52,11 +54,15 @@ class Neuron:
         # partial derivative for a neuron is the delataTimesW multiplied by the input
         # this is used in backpropogation to update the weights in order to continue learn
         self.deltaTimesW = np.multiply(deltaTimesW, self.activationDerivative())
-        return self.deltaTimesW * self.weights[:self.inputNum]
+        self.updateWeight()
+        return self.deltaTimesW * self.weights
 
     # Simply update the weights using the partial derivatives and the leranring weight
     def updateWeight(self):
-        self.weights[:self.inputNum] = self.weights[:self.inputNum] - lr * np.multiply(self.deltaTimesW, self.input)
+        print("weights:" + str(self.weights))
+        print(str(np.multiply(self.deltaTimesW, self.input)))
+        self.weights = self.weights - (self.lr * self.deltaTimesW * self.input)
+        print("updated weights:" + str(self.weights))
 
 
 #A fully connected layer        
@@ -95,7 +101,7 @@ class FullyConnected:
             
     #given the next layer's w*delta, should run through the neurons calling calcpartialderivative() for each (with the correct value), sum up its own w*delta, and then update the wieghts (using the updateweight() method). I should return the sum of w*delta.          
     def calcWDeltas(self, wtimesdelta):
-        nextWDeltas = np.zeros(shape=(self.numOfNeurons, self.inputNum))
+        nextWDeltas = np.zeros(shape=(self.numOfNeurons, self.inputNum + 1))
         for i in range(self.numOfNeurons):
             nextWDeltas[i] = self.neurons[i].calcPartialDerivative(wtimesdelta[i])
         return np.sum(nextWDeltas, axis = 0)
@@ -137,53 +143,95 @@ class NeuralNetwork:
             # input to the next layer is the output from the previous layer
             input = layer.calculate(input)
             self.output.append(input)
+        
         return self.output
         
     #Given a predicted output and ground truth output simply return the loss (depending on the loss function)
     def calculateLoss(self,yp,y):
         if self.lossFunction == "leastSquares":
             self.lossVal = 0.5 * np.sum(np.power((y-yp), 2))
+        elif self.lossFunction == "meanSquares":
+            self.lossVal = np.sum(np.power((y-yp), 2)) / len(yp)
     
     # Given a predicted output and ground truth output simply return the derivative of the loss (depending on the loss function)  
     # Lossderiv is part of delta      
     def lossDeriv(self,yp,y):
-        self.lossDerivative = -(y-yp)
+        self.lossDerivative = (yp-y)
         
     
     #Given a single input and desired output preform one step of backpropagation (including a forward pass, getting the derivative of the loss, and then calling calcwdeltas for layers with the right values         
     def train(self,x,y):
 
-        for i in range(self.epochs):
-            output = self.calculate(x)
-            print(output)
-            finalLayerOutput = output[-1]
-            self.calculateLoss(finalLayerOutput, y)
-            self.lossDeriv(finalLayerOutput, y)
-            nextWDeltas = self.lossDerivative
-            for layer in range(numOfLayers):
-                nextWDeltas = self.layers[numOfLayers-layer-1].calcWDeltas(nextWDeltas)
+        output = self.calculate(x)
+        finalLayerOutput = output[-1]
+        self.calculateLoss(finalLayerOutput, y)
+        self.lossDeriv(finalLayerOutput, y)
+        print("Final Layer Output")
+        print(finalLayerOutput)
+        nextWDeltas = self.lossDerivative
+        print(nextWDeltas)
+        for layer in reversed(self.layers):
+            nextWDeltas = layer.calcWDeltas(nextWDeltas)
         
 
     def returnLoss(self):
         return self.lossDerivative
-    
+
+
+def plotTestResults(nnOuputs, legend, title):
+    fig,ax = plt.subplots()
+    for y, label in zip(nnOuputs, legend):
+        x = np.linspace(1, len(y), len(y))
+        ax.plot(x, y, label = label)
+        ax.legend()
+        ax.set_title(title)
+        ax.set_xlabel("epochs")
+        ax.set_ylabel("value")
+
+def plotLoss(loss, title):
+    fig,ax = plt.subplots()
+    lenLoss = len(loss)
+    x = np.linspace(1, lenLoss, lenLoss)
+    ax.plot(x, loss)
+    ax.set_title(title)
+    ax.set_xlabel("epochs")
+    ax.set_ylabel("loss")
 
 if __name__=="__main__":
     if len(sys.argv) < 2:
         # Starting point
-        lr = 0.5
-        weights = np.array([[[0.15, 0.2, 0.35],[0.25, 0.30, 0.35]],
-                            [[0.40, 0.45, 0.6],[0.50, 0.55, 0.6]]])
-        numOfLayers = 2
-        numOfNeurons = np.array([2, 2])
+        lr = 0.1
+        weights = np.array([[[0.4, 0.45, 0.3]]])
+        numOfLayers = 1
+        numOfNeurons = np.array([1])
         numOfInputs = 2
         activation = "logistic"
         loss = "leastSquares"
-        nn = NeuralNetwork(numOfLayers, numOfNeurons, numOfInputs, activation, loss, lr, weights, epochs = 10)
-        inputs = np.array([.05, .1])
-        y = np.array([0.01,0.99])
-        nn.train(inputs, y)
-    
+        nn = NeuralNetwork(numOfLayers, numOfNeurons, numOfInputs, activation, loss, lr, weights, epochs = 100)
+        highBit = 1
+        lowBit = 0
+        inputs = np.array([[lowBit, highBit], [highBit, lowBit], [lowBit,lowBit], [highBit,highBit]])
+        y = np.array([[lowBit], [lowBit], [lowBit], [highBit]])
+        numOfEpochs = 100
+        lossValues = []
+        y_0_0 = []
+        y_0_1 = []
+        y_1_0 = []
+        y_1_1 = []
+        for i in range(numOfEpochs):
+            nn.train(inputs[1], y[1])
+            y_1_0.append(nn.output[0])
+            nn.train(inputs[0], y[0])
+            y_0_1.append(nn.output[0])
+            nn.train(inputs[3], y[3])
+            y_1_1.append(nn.output[0])
+            nn.train(inputs[2], y[2])
+            y_0_0.append(nn.output[0])
+            lossValues.append(nn.returnLoss())
+        
+        plotTestResults([y_0_0, y_0_1, y_1_0, y_1_1], ["0,0", "0,1", "1,0", "1,1"], "Binary AND Function\nlearning rate: %0.3f" % lr)
+        plotLoss(lossValues, "Binary AND Function Loss\nlearning rate: %0.3f" % lr)
+        plt.show()
         
     elif sys.argv[1] == "singleStep":
         # Run single step
