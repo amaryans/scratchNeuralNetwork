@@ -19,10 +19,8 @@ class Neuron:
         self.inputNum = inputNum
         self.lr = lr
         self.deltaTimesW = []
-        print(weights)
         if weights == None:
             self.weights = [weight for weight in np.random.randn(int(inputNum + 1))]
-            print(self.weights)
         else:
             self.weights = weights
         self.lenWeights = len(self.weights)
@@ -135,7 +133,6 @@ class NeuralNetwork:
         self.lossFunction = lossFunction
         self.epochs = epochs
         weights = [None for x in range(numOfLayers)]
-        print(weights)
         for i in range(numOfLayers):
             if i == 0:
                 self.layers.append(FullyConnected(numOfNeurons[i], activation[i], inputSize, lr, weights[i]))
@@ -177,7 +174,6 @@ class NeuralNetwork:
         self.calculateLoss(finalLayerOutput, y)
         self.lossDeriv(finalLayerOutput, y)
         nextWDeltas = self.lossDerivative
-        print(output)
         for layer in reversed(self.layers):
             nextWDeltas = layer.calcWDeltas(nextWDeltas)
         
@@ -241,6 +237,8 @@ if __name__=="__main__":
         plotTestResults([y_0_0, y_0_1, y_1_0, y_1_1], ["0,0", "0,1", "1,0", "1,1"], "Binary AND Function\nlearning rate: %0.3f" % lr)
         plotLoss(lossValues, "Binary AND Function Loss\nlearning rate: %0.3f" % lr)
         plt.show()
+        plotLabel = "and_lr%0.2f" % lr
+        plt.savefig("../graphs/%s.png" % plotLabel)
         
     elif sys.argv[1] == "singleStep":
         # Run single step
@@ -249,39 +247,41 @@ if __name__=="__main__":
 
     elif sys.argv[1] == "and":
         # Train to recognize "And" logic gate
-        print("AND")
-        lr = 0.1
-        weights = np.array([[[0.4, 0.45, 0.3]]])
-        numOfLayers = 1
-        numOfNeurons = np.array([1])
-        numOfInputs = 2
-        activation = "logistic"
-        loss = "leastSquares"
-        nn = NeuralNetwork(numOfLayers, numOfNeurons, numOfInputs, activation, loss, lr, epochs = 100)
-        highBit = 1
-        lowBit = 0
-        inputs = np.array([[lowBit, highBit], [highBit, lowBit], [lowBit,lowBit], [highBit,highBit]])
-        y = np.array([[lowBit], [lowBit], [lowBit], [highBit]])
-        numOfEpochs = 1000
-        lossValues = []
-        y_0_0 = []
-        y_0_1 = []
-        y_1_0 = []
-        y_1_1 = []
-        for i in range(numOfEpochs):
-            nn.train(inputs[1], y[1])
-            y_1_0.append(nn.output[0])
-            nn.train(inputs[0], y[0])
-            y_0_1.append(nn.output[0])
-            nn.train(inputs[3], y[3])
-            y_1_1.append(nn.output[0])
-            nn.train(inputs[2], y[2])
-            y_0_0.append(nn.output[0])
-            lossValues.append(nn.returnLoss())
-        
-        plotTestResults([y_0_0, y_0_1, y_1_0, y_1_1], ["0,0", "0,1", "1,0", "1,1"], "Binary AND Function\nlearning rate: %0.3f" % lr)
-        plotLoss(lossValues, "Binary AND Function Loss\nlearning rate: %0.3f" % lr)
-        plt.show()
+        networkType = "and"
+        learningRates = [1, 0.5, 0.35, 0.2, 0.15, 0.1, 0.075, 0.05, 0.01]
+        for lr in learningRates:
+            numOfLayers = 1
+            numOfNeurons = np.array([1])
+            numOfInputs = 2
+            activation = ["logistic"]
+            loss = "leastSquares"
+            nn = NeuralNetwork(numOfLayers, numOfNeurons, numOfInputs, activation, loss, lr, epochs = 100)
+            highBit = 1
+            lowBit = 0
+            inputs = np.array([[lowBit, highBit], [highBit, lowBit], [lowBit,lowBit], [highBit,highBit]])
+            y = np.array([[lowBit], [lowBit], [lowBit], [highBit]])
+            numOfEpochs = 1000
+            lossValues = []
+            y_0_0 = []
+            y_0_1 = []
+            y_1_0 = []
+            y_1_1 = []
+            for i in range(numOfEpochs):
+                nn.train(inputs[1], y[1])
+                y_1_0.append(nn.output[0])
+                nn.train(inputs[0], y[0])
+                y_0_1.append(nn.output[0])
+                nn.train(inputs[3], y[3])
+                y_1_1.append(nn.output[0])
+                nn.train(inputs[2], y[2])
+                y_0_0.append(nn.output[0])
+                lossValues.append(nn.returnLoss())
+            
+            plotTestResults([y_0_0, y_0_1, y_1_0, y_1_1], ["0,0", "0,1", "1,0", "1,1"], "Binary AND Function\nlearning rate: %0.3f" % lr)
+            plt.savefig("../graphs/%s/%0.3f_results.png" % (networkType, lr))
+            plotLoss(lossValues, "Binary AND Function Loss\nlearning rate: %0.3f" % lr)
+            #plt.show()
+            plt.savefig("../graphs/%s/%0.3f_loss.png" % (networkType, lr))
     
     elif sys.argv[1] == "xor":
         print("XOR")
@@ -318,36 +318,40 @@ if __name__=="__main__":
         #plotLoss(lossValues, "Binary AND Function Loss\nlearning rate: %0.3f" % lr)
 
 
-        lr = 0.1
-        weights = np.array([[[0.4, 0.45, 0.3],[0.4, 0.45, 0.3]],[[0.4, 0.45, 0.3],[0.4, 0.45, 0.3]]])
-        numOfLayers = 2
-        numOfNeurons = np.array([2,1])
-        numOfInputs = 2
-        activation = ["logistic", "logistic"]
-        loss = "leastSquares"
-        numOfEpochs = 10000
-        nn = NeuralNetwork(numOfLayers, numOfNeurons, numOfInputs, activation, loss, lr, [], epochs = numOfEpochs)
-        highBit = 1
-        lowBit = 0
-        inputs = np.array([[lowBit, highBit], [highBit, lowBit], [lowBit,lowBit], [highBit,highBit]])
-        y =      np.array([[highBit],         [highBit],         [lowBit],        [lowBit]])
+        networkType = "xor"
+        learningRates = [1, 0.5, 0.35, 0.2, 0.15, 0.1, 0.075, 0.05, 0.01]
+        for lr in learningRates:
+            weights = np.array([[[0.4, 0.45, 0.3],[0.4, 0.45, 0.3]],[[0.4, 0.45, 0.3],[0.4, 0.45, 0.3]]])
+            numOfLayers = 2
+            numOfNeurons = np.array([2,1])
+            numOfInputs = 2
+            activation = ["logistic", "logistic"]
+            loss = "leastSquares"
+            numOfEpochs = 10000
+            nn = NeuralNetwork(numOfLayers, numOfNeurons, numOfInputs, activation, loss, lr, [], epochs = numOfEpochs)
+            highBit = 1
+            lowBit = 0
+            inputs = np.array([[lowBit, highBit], [highBit, lowBit], [lowBit,lowBit], [highBit,highBit]])
+            y =      np.array([[highBit],         [highBit],         [lowBit],        [lowBit]])
+            
+            lossValues = []
+            y_0_0 = []
+            y_0_1 = []
+            y_1_0 = []
+            y_1_1 = []
+            for i in range(numOfEpochs):
+                nn.train(inputs[1], y[1])
+                y_1_0.append(nn.output[-1])
+                nn.train(inputs[0], y[0])
+                y_0_1.append(nn.output[-1])
+                nn.train(inputs[3], y[3])
+                y_1_1.append(nn.output[-1])
+                nn.train(inputs[2], y[2])
+                y_0_0.append(nn.output[-1])
+                lossValues.append(nn.returnLoss())
         
-        lossValues = []
-        y_0_0 = []
-        y_0_1 = []
-        y_1_0 = []
-        y_1_1 = []
-        for i in range(numOfEpochs):
-            nn.train(inputs[1], y[1])
-            y_1_0.append(nn.output[-1])
-            nn.train(inputs[0], y[0])
-            y_0_1.append(nn.output[-1])
-            nn.train(inputs[3], y[3])
-            y_1_1.append(nn.output[-1])
-            nn.train(inputs[2], y[2])
-            y_0_0.append(nn.output[-1])
-            lossValues.append(nn.returnLoss())
-        
-        plotTestResults([y_0_0, y_0_1, y_1_0, y_1_1], ["0,0", "0,1", "1,0", "1,1"], "Binary AND Function\nlearning rate: %0.3f" % lr)
-        plotLoss(lossValues, "Binary AND Function Loss\nlearning rate: %0.3f" % lr)
-        plt.show()
+            plotTestResults([y_0_0, y_0_1, y_1_0, y_1_1], ["0,0", "0,1", "1,0", "1,1"], "Binary XOR Function\nlearning rate: %0.3f" % lr)
+            plt.savefig("../graphs/%s/%0.3f_results.png" % (networkType, lr))
+            plotLoss(lossValues, "Binary XOR Function Loss\nlearning rate: %0.3f" % lr)
+            #plt.show()
+            plt.savefig("../graphs/%s/%0.3f_loss.png" % (networkType, lr))
